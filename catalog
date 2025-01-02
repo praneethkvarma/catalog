@@ -1,0 +1,85 @@
+import java.io.*;
+import java.util.*;
+
+public class Main {
+
+    private static long decodeValue(String value, int base) {
+        long result = 0;
+        for (char digit : value.toCharArray()) {
+            result = result * base + (Character.isDigit(digit) ? digit - '0' : digit - 'a' + 10);
+        }
+        return result;
+    }
+
+    private static double lagrangeInterpolation(List<double[]> points) {
+        double result = 0.0;
+        int k = points.size();
+        for (int i = 0; i < k; i++) {
+            double term = points.get(i)[1];
+            for (int j = 0; j < k; j++) {
+                if (i != j) {
+                    term *= (0.0 - points.get(j)[0]) / (points.get(i)[0] - points.get(j)[0]);
+                }
+            }
+            result += term;
+        }
+        return result;
+    }
+
+    private static Map<String, Object> parseJson(String json) {
+        Map<String, Object> map = new HashMap<>();
+        json = json.trim().substring(1, json.length() - 1); // Remove outer braces
+        String[] entries = json.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"); // Split by commas outside quotes
+        for (String entry : entries) {
+            String[] pair = entry.split(":", 2);
+            String key = pair[0].trim().replaceAll("\"", "");
+            String value = pair[1].trim();
+            if (value.startsWith("{")) {
+                map.put(key, parseJson(value));
+            } else if (value.startsWith("\"")) {
+                map.put(key, value.replaceAll("\"", ""));
+            } else if (value.matches("\\d+")) {
+                map.put(key, Integer.parseInt(value));
+            } else {
+                map.put(key, value);
+            }
+        }
+        return map;
+    }
+
+    public static void main(String[] args) {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader("testcase.json"));
+            StringBuilder jsonBuilder = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                jsonBuilder.append(line);
+            }
+            reader.close();
+
+            String jsonString = jsonBuilder.toString();
+            Map<String, Object> data = parseJson(jsonString);
+            Map<String, Object> keys = (Map<String, Object>) data.get("keys");
+            int k = (int) keys.get("k");
+
+            List<double[]> points = new ArrayList<>();
+            for (String key : data.keySet()) {
+                if (key.equals("keys")) continue;
+
+                int x = Integer.parseInt(key);
+                Map<String, Object> root = (Map<String, Object>) data.get(key);
+                int base = Integer.parseInt((String) root.get("base"));
+                String value = (String) root.get("value");
+                long y = decodeValue(value, base);
+
+                points.add(new double[]{x, y});
+                if (points.size() == k) break;
+            }
+
+            long constant = Math.round(lagrangeInterpolation(points));
+            System.out.println(constant);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
